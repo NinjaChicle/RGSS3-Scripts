@@ -3,8 +3,8 @@
 #------------------------------------------------------------------------------#
 # by NinjaChicle
 #
-# View and sort database contents like Items, Skills, Animations, and States
-# (able to sort by specific attribute values)
+# View and search database contents like Items, Skills, Animations, and States
+# (able to search by specific attribute values)
 #
 # v1.1 : Made some descriptions clearer.
 #
