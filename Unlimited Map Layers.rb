@@ -7,6 +7,8 @@
 # each with their own tilemap, parallax, collision, spawned events and
 # pixel offset. Switching between these layer maps is possible for all characters.
 #
+# v.1.1 : Fixed main map fadeout sometimes not fading back to normal.
+#
 # Compatible with:
 # * Yanfly - Parallax Lock
 # * Victor Engine - Visual Equip
@@ -957,7 +959,6 @@ class Spriteset_Map
       @layers_active = true
       @mod_tilemap = false
       @on_upper_map = true
-      @mem_opacity = 255
       if !$layer_maps.data_translator.empty?
         $layer_maps.mem_attrib.opacity.clear
         $layer_maps.mem_attrib.modified_tilemap.clear
@@ -1198,7 +1199,8 @@ class Spriteset_Map
       @prev_p_y = $game_player.y
       @i_p_x = @p_x.to_i
       @i_p_y = @p_y.to_i
-      @opacity_main_map = !@on_upper_map
+      @opacity_main_map = !@on_upper_map || 
+      !$game_player.layer_mode_on && @mem_opacity < 255
       @expected_num += 1 if @opacity_main_map
     end
     return if !@activate_u_l_update
@@ -1214,7 +1216,8 @@ class Spriteset_Map
         @exclusion_list = MULT_LAYERS::EXCLUSION[@prev_tileset]
       end
       opacity = 255
-      if MULT_LAYERS::FIELDS.any? {|i|
+      if $game_player.layer_mode_on && 
+        MULT_LAYERS::FIELDS.any? {|i|
         num = $game_map.data[@i_p_x, @i_p_y, i]
         num > 0 && !@exclusion_list[i].key?(num) }
         opacity = @u_t_opacity
