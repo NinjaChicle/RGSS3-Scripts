@@ -1089,7 +1089,7 @@ class Spriteset_Map
     @lower_arr_size = @lower_l_arr.size
     $layer_maps.layer_order_changed = false
     @prev_p_x = nil
-    @activate_u_l_update = nil
+    @activate_u_l_update = false
     if $game_player.layer_mode_on
       p_viewport = @layer_viewports[p_layer]
       if highest_viewports.include?(p_viewport)
@@ -1191,17 +1191,25 @@ class Spriteset_Map
   def do_upper_fade_check
     @p_x = $game_player.x
     @p_y = $game_player.y
-    if !@activate_u_l_update && (@p_x != @prev_p_x || @p_y != @prev_p_y)
+    @do_num_check = !@activate_u_l_update && (@p_x != @prev_p_x || @p_y != @prev_p_y)
+    @main_map_o_check = !@opacity_main_map && @mem_opacity < 255 if !@do_num_check
+    if @do_num_check
       @comp_l = 0
-      @expected_num = @a_u_l_s
       @activate_u_l_update = true
       @prev_p_x = $game_player.x
       @prev_p_y = $game_player.y
       @i_p_x = @p_x.to_i
       @i_p_y = @p_y.to_i
+      @expected_num = @a_u_l_s
+      @main_map_o_check = true
+    end
+    if @main_map_o_check
+      @expected_num = @a_u_l_s
       @opacity_main_map = !@on_upper_map || 
       !$game_player.layer_mode_on && @mem_opacity < 255
       @expected_num += 1 if @opacity_main_map
+      @main_map_o_check = false
+      @activate_u_l_update = true
     end
     return if !@activate_u_l_update
     unless @p_x == @prev_p_x && @p_y == @prev_p_y
@@ -1216,7 +1224,7 @@ class Spriteset_Map
         @exclusion_list = MULT_LAYERS::EXCLUSION[@prev_tileset]
       end
       opacity = 255
-      if $game_player.layer_mode_on && 
+      if $game_player.layer_mode_on &&
         MULT_LAYERS::FIELDS.any? {|i|
         num = $game_map.data[@i_p_x, @i_p_y, i]
         num > 0 && !@exclusion_list[i].key?(num) }
@@ -1229,11 +1237,13 @@ class Spriteset_Map
     end
     if @comp_l == @expected_num
       @activate_u_l_update = false
+      @expected_num = nil
       @comp_l = 0
     end
   end
   
   def set_layer_opacities
+    @comp_l = 0 if !@expected_num || @comp_l > @expected_num
     if @prev_layer_i && $game_player.layer_i != @prev_layer_i
       @gradual_m_speed = MULT_LAYERS::FADE_SPEED
       update_layer_order_data
@@ -1368,7 +1378,7 @@ class Spriteset_Map
     tilemap.flags = tileset.flags
     @layer_tilemaps << tilemap
     parallax = Plane.new(viewport)
-    parallax.z = @parallax.z + (map_index+1)#*100
+    parallax.z = @parallax.z + (map_index+1)
     if !layer_map.parallax.name.empty?
       parallax.bitmap = Cache.parallax(layer_map.parallax.name)
     end
