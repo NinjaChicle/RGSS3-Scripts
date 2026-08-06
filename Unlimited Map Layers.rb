@@ -8,6 +8,7 @@
 # pixel offset. Switching between these layer maps is possible for all characters.
 #
 # v.1.1 : Fixed main map fadeout sometimes not fading back to normal.
+# v.1.2 : Fixed some upper maps not fully fading back in unless you move again.
 #
 # Compatible with:
 # * Yanfly - Parallax Lock
@@ -253,7 +254,8 @@ module MULT_LAYERS
     tile_events = sub_layer_data.event_data.tile_events
     map_data = main_layer_data.data
     return false if !MULT_LAYERS.valid?(x,y,map_data)
-    all_tile_list=tile_events.select {|event| event.pos_nt?(x, y) }.collect {|ev| ev.tile_id }.concat(FIELDS.collect {|z| map_data[x, y, z]})
+    all_tile_list=tile_events.select {|event| event.pos_nt?(x, y) }.collect {|ev| 
+    ev.tile_id }.concat(FIELDS.collect {|z| map_data[x, y, z]})
     a_t_size = all_tile_list.size
     var_tileset = $data_tilesets[main_layer_data.tileset_id]
     flags = var_tileset.flags
@@ -1176,10 +1178,15 @@ class Spriteset_Map
         @prev_tileset = layer_data.tileset_id
         @exclusion_list = MULT_LAYERS::EXCLUSION[@prev_tileset]
       end
-      if MULT_LAYERS::FIELDS.any? {|i|
-        num = data[@i_p_x,@i_p_y,i]
-        num > 0 && !@exclusion_list[i].key?(num) }
-        opacity = @u_t_opacity
+      j = 0
+      while 3 > j
+        f = MULT_LAYERS::FIELDS[j]
+        num = data[@i_p_x,@i_p_y,f]
+        if num > 0 && !@exclusion_list[f].key?(num)
+          opacity = @u_t_opacity
+          break
+        end
+        j += 1
       end
       o = @do_u_f_chars || !@updating_layer_keys.key?(id) ||
       opacity == 255 && @updating_layer_keys.key?(id)
@@ -1196,8 +1203,8 @@ class Spriteset_Map
     if @do_num_check
       @comp_l = 0
       @activate_u_l_update = true
-      @prev_p_x = $game_player.x
-      @prev_p_y = $game_player.y
+      @prev_p_x = @p_x
+      @prev_p_y = @p_y
       @i_p_x = @p_x.to_i
       @i_p_y = @p_y.to_i
       @expected_num = @a_u_l_s
@@ -1216,6 +1223,9 @@ class Spriteset_Map
       @i_p_x = @p_x.to_i
       @i_p_y = @p_y.to_i
     end
+    if @comp_l > 0 && @comp_l < @a_u_l_s
+      @comp_l = !@on_upper_map && !@opacity_main_map ? 1 : 0
+    end
     upper_fade_iterate unless @opacity_main_map && @comp_l == @a_u_l_s
     if @opacity_main_map
       tileset_id = $game_map.tileset_id
@@ -1224,11 +1234,17 @@ class Spriteset_Map
         @exclusion_list = MULT_LAYERS::EXCLUSION[@prev_tileset]
       end
       opacity = 255
-      if $game_player.layer_mode_on &&
-        MULT_LAYERS::FIELDS.any? {|i|
-        num = $game_map.data[@i_p_x, @i_p_y, i]
-        num > 0 && !@exclusion_list[i].key?(num) }
-        opacity = @u_t_opacity
+      if $game_player.layer_mode_on
+        j = 0
+        while 3 > j
+          f = MULT_LAYERS::FIELDS[j]
+          num = $game_map.data[@i_p_x, @i_p_y, f]
+          if num > 0 && !@exclusion_list[f].key?(num)
+            opacity = @u_t_opacity
+            break
+          end
+          j += 1
+        end
       end
       if set_cur_map_opacity(opacity,@g_m_s2)
         @comp_l += 1
@@ -1243,7 +1259,7 @@ class Spriteset_Map
   end
   
   def set_layer_opacities
-    @comp_l = 0 if !@expected_num || @comp_l > @expected_num
+    @comp_l = 0 if !@expected_num
     if @prev_layer_i && $game_player.layer_i != @prev_layer_i
       @gradual_m_speed = MULT_LAYERS::FADE_SPEED
       update_layer_order_data
@@ -1252,8 +1268,7 @@ class Spriteset_Map
     opacity = 255
     i = 0
     while @updating_i_size > i
-      id = @updating_i[i]
-      set_layer_opacity(id,opacity,false,@gradual_m_speed)
+      set_layer_opacity(@updating_i[i],opacity,false,@gradual_m_speed)
       i += 1
     end
     do_upper_fade_check if @do_upper_fade
